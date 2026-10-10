@@ -67,9 +67,13 @@ gây tốn công sửa lại.
 3. Bước deterministic YAML "Open or update the spec PR" (chạy sau khi agent exit, lúc này PR đã
    chắc chắn tồn tại) được mở rộng: sau khi mở/update PR như hiện tại, đọc các file PNG đã commit
    trên branch và post thêm 1 comment lên đúng PR đó, chứa ảnh markdown
-   `![mockup](.../blob/{branch}/{path}?raw=true)` cho mỗi screenshot (bắt buộc dùng cú pháp ảnh
-   markdown, không phải link trần, để GitHub render inline) — GitHub render ảnh inline khi viewer
-   đã đăng nhập.
+   `![mockup](.../blob/{commit_sha}/{path}?raw=true)` cho mỗi screenshot — dùng **commit SHA cụ
+   thể** (không dùng tên branch) vì bước `/approve` ngay sau đó sẽ merge và **xoá branch**
+   (`gh pr merge --delete-branch`); link ghim theo branch sẽ chết ngay sau khi merge (đúng
+   happy-path), còn link ghim theo SHA vẫn sống vì workflow merge bằng merge-commit thường (không
+   squash/rebase), nên commit đó luôn còn trong lịch sử `main`. Bước này cũng cần guard
+   idempotency tương tự bước "approve and merge" liền kề trong cùng workflow (không post lại comment
+   trùng nếu job bị rerun).
 4. Một comment `/approve` duy nhất trên PR đó duyệt cả spec text và mockup cùng lúc (không cần sửa
    logic Worker ở repo `control-plane` ngoài repo này, vốn chỉ nhận diện 2 loại PR hiện có).
 5. Yêu cầu sửa đi theo route bình thường (issue comment mới → Resume path → sinh lại mockup cùng
@@ -88,16 +92,23 @@ mockup, không có gì chặn implementation.
       đính (online-pipeline). *(Nhánh online-pipeline: verify ở lần chạy thật đầu tiên sau merge,
       xem Risk 4 — không verify được trước merge trong session planning này.)*
 - [ ] Với online-pipeline, sau khi bước YAML mở/update PR spec, PR đó có comment kèm ảnh markdown
-      `![mockup](.../blob/{branch}/{path}?raw=true)` cho mỗi mockup; không có PR/branch thứ 2 nào
-      được tạo cho mockup. *(Verify ở lần chạy thật đầu tiên sau merge, xem Risk 4.)*
+      `![mockup](.../blob/{commit_sha}/{path}?raw=true)` (ghim theo commit SHA, không theo tên
+      branch, để link không chết sau khi branch bị xoá lúc merge) cho mỗi mockup; không có
+      PR/branch thứ 2 nào được tạo cho mockup. *(Verify ở lần chạy thật đầu tiên sau merge, xem
+      Risk 4.)*
+- [ ] Nếu bước chụp screenshot (`capture.mjs`/Playwright) thất bại trong CI, job của online-pipeline
+      fail rõ ràng và báo lỗi qua cơ chế issue-comment error-reporting hiện có — không có mockup
+      "giả" hay fallback âm thầm nào được approve nhầm.
 - [ ] Sau khi implementation tồn tại, cơ chế diff sẵn có của `layout-writing`
       (`capture.mjs`/`overlay.mjs`) chạy đối chiếu với mockup đã approve làm nguồn visual.
 - [ ] Feature không có UI (không có `ui_ux_requirements`) bỏ qua hoàn toàn Step 7 — không sinh file
       mockup, không có gì chặn implementation.
 - [ ] Mockup file (và screenshot PNG ở online-pipeline) được giữ lại sau khi implement xong, không
       bị xoá.
-- [ ] `skills/methodology/SKILL.md` phản ánh bước mới (lifecycle diagram, danh sách bước "Plan the
-      Feature", cây thư mục `work/{feature}/`, bảng Skill Responsibilities).
+- [ ] `skills/methodology/SKILL.md` chứa đủ 4 nội dung cụ thể: lifecycle diagram có bước mockup mới,
+      danh sách bước "Plan the Feature" có bước mockup, cây thư mục `work/{feature}/` có entry cho
+      file mockup, và bảng Skill Responsibilities có dòng cho bước mockup — không chỉ "được review"
+      mà thực sự chứa 4 nội dung này.
 
 ## Constraints
 
@@ -108,14 +119,21 @@ mockup, không có gì chặn implementation.
   `feature/{slug}`) — không thể mở PR/branch thứ 3 riêng cho mockup; mockup phải đi theo cùng PR
   spec hiện có.
 - `capture.mjs` resolve Playwright qua `package.json` của project được chỉ định. Vì methodology
-  này stack-agnostic (dự án đích có thể là Python/Ruby/PHP/Go, không có `package.json`), workflow
-  `userspec-turn` phải cài Playwright vào một thư mục tooling riêng trong CI checkout (độc lập
-  stack của target project) và trỏ `capture.mjs` vào thư mục đó khi chạy trong online-pipeline —
-  không trỏ vào root của target project.
+  này stack-agnostic (dự án đích có thể là Python/Ruby/PHP/Go, không có `package.json`), job
+  `userspec` (step "Run userspec-turn") trong workflow `.github/workflows/online-pipeline-userspec.yml`
+  phải cài Playwright vào một thư mục tooling riêng trong CI checkout (độc lập stack của target
+  project) và trỏ `capture.mjs` vào thư mục đó khi chạy trong online-pipeline — không trỏ vào root
+  của target project.
 - `gh` CLI không có cách upload ảnh trực tiếp vào comment. Giải pháp: commit file PNG vào branch
-  spec, reference bằng ảnh markdown `![mockup](.../blob/{branch}/{path}?raw=true)` (không phải link
-  trần — cú pháp markdown ảnh là bắt buộc để GitHub render inline) trong comment. PNG được giữ lại
+  spec, reference bằng ảnh markdown `![mockup](.../blob/{commit_sha}/{path}?raw=true)` (không phải
+  link trần — cú pháp markdown ảnh là bắt buộc để GitHub render inline; dùng **commit SHA**, không
+  dùng tên branch, vì `online-pipeline-userspec.yml` merge bằng `gh pr merge --delete-branch` —
+  branch bị xoá ngay sau khi `/approve`, nên link ghim theo branch sẽ chết, còn ghim theo SHA của
+  merge-commit thường thì vẫn sống vĩnh viễn trong lịch sử `main`) trong comment. PNG được giữ lại
   trên branch cùng mockup.html, không xoá sau khi approve.
+- Bước post comment (mở rộng từ "Open or update the spec PR") cần guard idempotency tương tự bước
+  "approve and merge" liền kề trong cùng workflow (vốn đã có guard `if ! git diff --cached --quiet`)
+  — không post lại comment trùng nếu job bị rerun sau khi comment đã post thành công.
 - Agent không tự mở hay comment lên PR (giữ nguyên tắc hiện có: chỉ workflow YAML deterministic
   mới thao tác PR, agent không gọi `gh pr create`). Việc post comment kèm ảnh screenshot phải do
   bước YAML "Open or update the spec PR" thực hiện (chạy sau khi agent đã exit và PR chắc chắn tồn
@@ -123,9 +141,10 @@ mockup, không có gì chặn implementation.
   tại.
 - Nếu `capture.mjs`/Playwright screenshot thất bại trong CI (ví dụ render timeout), xử lý như bất
   kỳ lỗi bước CI khác trong workflow đó — job fail và báo lỗi qua cơ chế issue-comment
-  error-reporting hiện có, không có fallback âm thầm nào.
-- Thêm bước cài Playwright vào CI workflow `userspec-turn` làm tăng thời gian chạy CI cho mọi
-  feature có UI — đã được người dùng chấp nhận.
+  error-reporting hiện có, không có fallback âm thầm nào. (Xem acceptance criterion tương ứng ở
+  trên.)
+- Thêm bước cài Playwright vào job `userspec` của `online-pipeline-userspec.yml` làm tăng thời
+  gian chạy CI cho mọi feature có UI — đã được người dùng chấp nhận.
 
 ## Risks
 
@@ -165,6 +184,10 @@ mockup, không có gì chặn implementation.
 - Chọn chấp nhận giới hạn: nhánh online-pipeline của feature này chỉ được verify bằng chạy thật sau
   khi merge, không verify được trong session planning (không có cách emulate GitHub Actions thật ở
   đây).
+- Chọn ghim link ảnh screenshot theo **commit SHA** (không theo tên branch) vì
+  `online-pipeline-userspec.yml` xoá branch ngay khi `/approve` merge (`--delete-branch`) — link
+  theo branch sẽ chết ngay ở happy path; link theo SHA của merge-commit thường (không
+  squash/rebase) thì sống vĩnh viễn trong lịch sử `main`.
 
 ## Testing
 
@@ -194,6 +217,8 @@ trên feature UI đầu tiên đi qua online-pipeline sau khi merge.
 | 5. Dry-run với 1 feature mẫu backend-only (không có `ui_ux_requirements`) | Step 7 bị skip hoàn toàn, không sinh file mockup, implementation không bị chặn |
 | 6. Review các SKILL.md mới/sửa (`user-spec-planning`, `layout-writing`, `online-pipeline`, `methodology`) bằng agent `skill-checker`, `skill-logic-reviewer`, và `skill-simplicity-reviewer` (3 lane theo đúng Review Model của `methodology/SKILL.md`) | Không có finding nghiêm trọng về cấu trúc/logic/over-engineering của skill |
 | 7. Sau khi implement xong 1 feature mẫu có UI, kiểm tra lại `work/{feature}/` | File mockup (và PNG screenshot nếu online-pipeline) vẫn còn, không bị xoá bởi bước implementation/cleanup nào |
+| 8. Đọc trực tiếp `skills/methodology/SKILL.md` sau khi sửa | Cả 4 nội dung đều có mặt: lifecycle diagram nêu bước mockup, danh sách bước "Plan the Feature" nêu bước mockup, cây thư mục `work/{feature}/` có entry mockup, bảng Skill Responsibilities có dòng cho bước mockup |
+| 9. Giả lập lỗi `capture.mjs`/Playwright trong dry-run (ví dụ đổi tạm path sai) | Bước đó fail rõ ràng, không có mockup/approval giả nào được tạo ra âm thầm |
 
 ### User Verification
 
@@ -202,6 +227,7 @@ trên feature UI đầu tiên đi qua online-pipeline sau khi merge.
   hoàn tất — vì "trung thực cao, dễ duyệt" là tiêu chí chủ quan, cần người dùng tự đánh giá thẩm mỹ,
   không phải thứ agent tự verify được.
 - Sau khi merge, theo dõi lần chạy online-pipeline đầu tiên có feature UI thực sự: xác nhận
-  Playwright cài đúng trong CI, `capture.mjs` chạy được, PNG commit + comment link render đúng trên
-  GitHub, `/approve` gộp duyệt cả spec + mockup — vì nhánh này chưa được verify trong session
+  Playwright cài đúng trong CI, `capture.mjs` chạy được, PNG commit + comment ảnh (ghim SHA) render
+  đúng trên GitHub, link ảnh vẫn sống sau khi `/approve` merge và xoá branch, `/approve` gộp duyệt cả
+  spec + mockup, và rerun job không tạo comment trùng — vì nhánh này chưa được verify trong session
   planning (known limitation đã chấp nhận).

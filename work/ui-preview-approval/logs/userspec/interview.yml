@@ -97,6 +97,17 @@ conversation_history:
       Đồng thời đánh dấu rõ AC liên quan đến online-pipeline là "verify ở lần chạy thật đầu tiên sau
       merge" (đã có ở Risk 4/Testing) thay vì gate trước merge. Đồng ý hướng sửa này không?
     user_answer: "ok"
+  - asked_at: "2026-10-10 15:30:00"
+    topic_keys: ["constraints", "integration_points", "acceptance_criteria"]
+    agent_questions: |
+      Validation round 2 (quality + adequacy + skeptic, skeptic clean) phát hiện 1 major cần quyết
+      định: PR merge trong online-pipeline-userspec.yml dùng `gh pr merge --delete-branch`, nên link
+      screenshot dạng `.../blob/{branch}/{path}?raw=true` sẽ 404 ngay sau khi approve/merge thành
+      công (đúng happy path, không phải edge case). Đề xuất: ghim link theo commit SHA
+      (`.../blob/{commit_sha}/{path}?raw=true`) thay vì tên branch — vì workflow merge bằng
+      merge-commit thường (không squash/rebase), commit đó sống vĩnh viễn trong lịch sử main dù
+      branch bị xoá. Đồng ý hướng này không?
+    user_answer: "ok"
 # Entry format:
 # - asked_at: "YYYY-MM-DD HH:MM:SS"
 #   topic_keys: ["user_problem", "success_criteria"]
