@@ -84,6 +84,19 @@ conversation_history:
       2. testing_strategy/verification_strategy chưa cover nhánh online-pipeline mới (cài Playwright trong CI, capture.mjs trong CI, đính screenshot vào PR, gộp approve) vì không emulate được GitHub Actions thật trong session planning. Đề xuất: ghi nhận rõ đây là known limitation, verify bằng cách chạy thật trên feature UI đầu tiên qua online-pipeline sau khi merge, theo dõi kỹ lần đầu. Đồng ý?
       3. Cách đính screenshot vào PR: gh CLI không upload ảnh trực tiếp. Đề xuất: commit PNG vào branch, reference bằng link .../blob/{branch}/{path}?raw=true (GitHub render inline khi viewer đã login). PNG giữ lại trên branch cùng mockup.html. Ok?
     user_answer: "ok hết"
+  - asked_at: "2026-10-10 14:45:00"
+    topic_keys: ["constraints", "integration_points", "acceptance_criteria"]
+    agent_questions: |
+      Validation round 1 (3 reviewer: quality, adequacy, skeptic) hội tụ vào 1 critical finding: mâu
+      thuẫn timing ở online-pipeline — agent được yêu cầu comment lên "PR spec hiện có" ngay trước
+      khi set ready_for_review, nhưng PR đó chưa tồn tại ở thời điểm agent còn chạy (PR chỉ được
+      workflow YAML mở/update SAU KHI agent exit). Đúng với lần chạy đầu tiên của mọi feature.
+      Đề xuất: agent chỉ generate mockup + commit PNG/HTML vào branch + set ready_for_review như cũ
+      (không tự mở/comment PR). Việc post comment kèm ảnh screenshot chuyển sang cho bước YAML
+      deterministic "Open or update the spec PR" (chạy sau agent exit, PR chắc chắn đã tồn tại).
+      Đồng thời đánh dấu rõ AC liên quan đến online-pipeline là "verify ở lần chạy thật đầu tiên sau
+      merge" (đã có ở Risk 4/Testing) thay vì gate trước merge. Đồng ý hướng sửa này không?
+    user_answer: "ok"
 # Entry format:
 # - asked_at: "YYYY-MM-DD HH:MM:SS"
 #   topic_keys: ["user_problem", "success_criteria"]
@@ -337,10 +350,14 @@ integration:
         mockup as a visual source, reusing the "Claude Design export" branch's treatment
         (render/diff via capture.mjs/overlay.mjs, reviewed by layout-reviewer).
       - skills/online-pipeline/SKILL.md — userspec-turn stage: after Step 5 validation and before
-        writing status: ready_for_review, generate mockup(s), screenshot via capture.mjs (pointed
-        at the workflow's own tooling directory, not the target project root), commit the PNG(s)
-        to the spec branch, and post a comment on the existing userspec/{slug} spec PR with
-        `.../blob/{branch}/{path}?raw=true` links; no new PR/branch/stage name.
+        writing status: ready_for_review, the agent generates mockup(s), screenshots via
+        capture.mjs (pointed at the workflow's own tooling directory, not the target project
+        root), and commits the PNG(s) to the spec branch alongside mockup.html — the agent itself
+        never opens or comments on a PR (consistent with the existing "agent never calls gh pr
+        create" rule). The comment carrying `![mockup](.../blob/{branch}/{path}?raw=true)` image
+        markdown is posted by the deterministic "Open or update the spec PR" workflow YAML step
+        (which runs after the agent exits, once the PR is guaranteed to exist), extended to read
+        the committed PNG paths; no new PR/branch/stage name.
       - .github workflow YAML for userspec-turn — add a step that installs Playwright into a
         dedicated tooling directory inside the CI checkout (decoupled from the target project's own
         package.json/stack).
