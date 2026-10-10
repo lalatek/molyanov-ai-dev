@@ -108,6 +108,21 @@ conversation_history:
       merge-commit thường (không squash/rebase), commit đó sống vĩnh viễn trong lịch sử main dù
       branch bị xoá. Đồng ý hướng này không?
     user_answer: "ok"
+  - asked_at: "2026-10-10 16:10:00"
+    topic_keys: ["constraints", "integration_points", "risks"]
+    agent_questions: |
+      Validation round 3 (quality + adequacy major findings, skeptic minor):
+      1. AC5 (đối chiếu mockup-vs-implementation) gặp lại đúng vấn đề Playwright/package.json đã fix
+      cho Step 7, nhưng chỉ fix ở workflow userspec-turn, chưa fix ở online-pipeline-implement.yml
+      (stage chạy layout-writing/code-writing). Đề xuất: áp dụng đúng pattern đã chốt (Playwright
+      trong thư mục tooling riêng, độc lập stack) cho cả online-pipeline-implement.yml. Đồng ý?
+      2. Blast radius: vì mockup+spec gộp 1 /approve, bước mockup/screenshot là gate bắt buộc cho
+      mọi feature UI qua online-pipeline — lỗi hạ tầng mới sẽ chặn mọi feature UI sau đó cho tới khi
+      fix, chưa verify trước merge (Risk 4). Giữ nguyên như đã quyết (theo dõi sát lần chạy đầu,
+      không kill-switch) hay thêm cơ chế tắt tạm?
+    user_answer: |
+      1. có.
+      2. giữ nguyên.
 # Entry format:
 # - asked_at: "YYYY-MM-DD HH:MM:SS"
 #   topic_keys: ["user_problem", "success_criteria"]
