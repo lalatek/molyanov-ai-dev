@@ -1,0 +1,387 @@
+# User-spec planning interview
+# Questions and answers are preserved verbatim. Topic fields track what is known and still open.
+
+interview_metadata:
+  started: "2026-10-10 13:11:29"
+  last_updated: "2026-10-10 14:20:00"
+  status: "in_progress"  # in_progress | completed
+  can_resume: true
+
+# Only written/read when the calling context carries the literal signal ONLINE_PIPELINE_AUTOMATED
+# (see user-spec-planning/SKILL.md Step 5). Ignored otherwise; stays null for interactive use.
+automated_validate_state: null
+# automated_validate_state:
+#   round: 2
+#   pending_finding: |
+#     Full finding text from the reviewer that returned user_decision_required.
+#   user_answer: ""  # filled in once the user replies; triggers a re-run of round 2 (not round 1)
+
+conversation_history:
+  - asked_at: "2026-10-10 13:11:29"
+    topic_keys: ["feature_description", "user_problem", "work_type", "ui_ux_requirements"]
+    agent_questions: |
+      1. Phạm vi: Feature này là thêm một bước vào pipeline methodology hiện có (user-spec-planning / layout-writing skill) để áp dụng cho mọi dự án dùng methodology này, hay đây là một tool/feature riêng bạn muốn build cho một dự án cụ thể?
+      2. Định dạng preview: wireframe đơn giản, mockup tĩnh độ trung thực cao, hay prototype click được?
+      3. Công cụ tạo preview: render HTML/React artifact trong chat, generate ảnh, hay mô tả cấu trúc UI? Có kết nối Figma được không?
+      4. Vị trí trong pipeline: trong lúc viết user-spec, hay bước riêng sau khi spec approved nhưng trước implement?
+    user_answer: |
+      1. mọi dự án
+      2. mockup tĩnh độ trung thực cao. Nếu mà xài được trên figma (kết nối) thì tốt nhất
+      3. bạn gợi ý
+      4. spec xong tới ui.
+  - asked_at: "2026-10-10 13:20:00"
+    topic_keys: ["success_criteria", "constraints", "ui_ux_requirements", "edge_cases"]
+    agent_questions: |
+      Tool check: không có tool ghi trực tiếp vào Figma hiện có (layout-writing chỉ đọc từ Figma/ảnh để code; DesignSync là sync component library lên claude.ai/design, không phải Figma, và là flow riêng người dùng tự chạy). Đề xuất: AI render mockup HTML/CSS tĩnh độ trung thực cao như artifact xem trong chat/browser, bám theo design token sẵn có của dự án nếu có. Chấp nhận hướng này không?
+      1. Thành công của feature = gì cụ thể?
+      2. Khi mockup bị reject, có giới hạn số lần lặp không?
+      3. Lưu trữ mockup ở đâu, có commit git không, giữ lại sau khi implement xong không?
+      4. Web vs Mobile: mockup HTML tĩnh có đại diện đủ cho mobile không, hay cần xử lý riêng?
+    user_answer: |
+      ok (đồng ý hướng mockup HTML/CSS tĩnh, không cần Figma thật)
+      1. nhiều màn hình/flow trong 1 mockup, responsive preview cho mobile
+      2. ko limit
+      3. có giữ (lưu lại sau khi implement xong)
+      4. xử lý riêng
+  - asked_at: "2026-10-10 13:40:00"
+    topic_keys: ["constraints", "ui_ux_requirements", "integration_points"]
+    agent_questions: |
+      1. Gap online-pipeline (headless, không render HTML): (a) chụp ảnh mockup bằng capture.mjs, đính PR/issue comment, dùng chung local+online; (b) deploy GitHub Pages; (c) mockup step chỉ chạy local, online-pipeline để version sau. Chọn hướng nào?
+      2. Mobile "xử lý riêng" cụ thể là gì: phone-frame trong cùng file, 2 file riêng, hay khác?
+      3. Mockup sau approve có bắt buộc đối chiếu khi code (đề xuất: tái dùng cơ chế diff của layout-writing — coi mockup.html như nhánh "Claude Design export" trong reproduce.md, dùng capture.mjs/overlay.mjs/layout-reviewer) hay chỉ tham khảo?
+      4. Cập nhật skills/methodology/SKILL.md (lifecycle diagram, feature-folder tree, Skill Responsibilities) có trong phạm vi không?
+    user_answer: |
+      1. a (chụp ảnh, đính PR/issue comment, dùng chung local + online)
+      2. 2 file riêng (web và mobile tách biệt)
+      3. càng đúng càng tốt (đồng ý tái dùng cơ chế diff của layout-writing, mockup trở thành nguồn visual bắt buộc đối chiếu)
+      4. ok (trong phạm vi)
+  - asked_at: "2026-10-10 13:48:00"
+    topic_keys: ["constraints", "integration_points", "feature_name", "testing_strategy"]
+    agent_questions: |
+      1. Giới hạn Worker-side ở control-plane repo (ngoài repo này) chỉ nhận diện 2 loại PR (userspec/{slug}, feature/{slug}). Đề xuất: online-pipeline gộp mockup + screenshot vào cùng PR spec hiện có (userspec/{slug}), 1 comment /approve duyệt cả spec text và mockup cùng lúc — tránh phải sửa control-plane. Local/interactive vẫn tách 2 bước riêng (Step 6 duyệt spec, Step 7 duyệt mockup) trong chat. Đồng ý cách xử lý khác nhau giữa 2 mode?
+      2. Tên feature: "UI Mockup Preview & Approval Step" — ok?
+      3. Testing/verification: dry-run Step 7 mới trên 1 feature mẫu có UI (local mode) + review bằng agent skill-checker + skill-logic-reviewer cho phần skill instructions mới/sửa. Đồng ý?
+    user_answer: |
+      1. ok
+      2. ok
+      3. ok
+  - asked_at: "2026-10-10 13:55:00"
+    topic_keys: ["constraints", "ui_ux_requirements", "risks"]
+    agent_questions: |
+      Phát hiện: capture.mjs dùng Playwright để chụp screenshot; CI online-pipeline hiện chưa cài Playwright ở workflow nào — cần thêm bước cài Playwright + browser binary vào workflow userspec-turn.
+      1. Xác nhận thêm bước cài Playwright vào CI workflow nằm trong phạm vi feature (thêm thời gian chạy CI)?
+      2. Web vs mobile file: chỉ sinh file cho (các) platform mà feature thực sự nhắm tới (web-only → 1 file; cross-platform → 2 file), đúng không?
+      3. Risk nháp: (a) mockup lệch spec text nếu người duyệt chỉ đọc 1 trong 2 → mitigation: mockup phải bám đúng user-spec đã approve, không tự thêm scope; (b) thêm thời gian/chi phí cho mọi feature có UI → mitigation: chỉ kích hoạt khi feature thực sự có UI (có ui_ux_requirements liên quan), bỏ qua cho backend-only; (c) gộp approval spec+mockup ở online-pipeline nghĩa là không thể approve spec riêng reject mockup riêng → ghi nhận là limitation đã chấp nhận, không cần mitigation thêm. Đủ hay cần bổ sung?
+    user_answer: |
+      1. ok
+      2. ok
+      3. ok
+  - asked_at: "2026-10-10 14:15:00"
+    topic_keys: ["constraints", "testing_strategy", "integration_points", "dependencies"]
+    agent_questions: |
+      Completeness check phát hiện 2 gap nghiêm trọng + 1 gap nhỏ, tất cả quanh cơ chế screenshot online-pipeline:
+      1. capture.mjs resolve Playwright qua package.json của target project — nhưng methodology stack-agnostic (project Python/Ruby/PHP/Go không có package.json). Đề xuất: CI cài Playwright trong thư mục tooling riêng trong checkout của workflow (độc lập stack target project), trỏ capture.mjs vào thư mục đó khi chạy online-pipeline. Đồng ý?
+      2. testing_strategy/verification_strategy chưa cover nhánh online-pipeline mới (cài Playwright trong CI, capture.mjs trong CI, đính screenshot vào PR, gộp approve) vì không emulate được GitHub Actions thật trong session planning. Đề xuất: ghi nhận rõ đây là known limitation, verify bằng cách chạy thật trên feature UI đầu tiên qua online-pipeline sau khi merge, theo dõi kỹ lần đầu. Đồng ý?
+      3. Cách đính screenshot vào PR: gh CLI không upload ảnh trực tiếp. Đề xuất: commit PNG vào branch, reference bằng link .../blob/{branch}/{path}?raw=true (GitHub render inline khi viewer đã login). PNG giữ lại trên branch cùng mockup.html. Ok?
+    user_answer: "ok hết"
+# Entry format:
+# - asked_at: "YYYY-MM-DD HH:MM:SS"
+#   topic_keys: ["user_problem", "success_criteria"]
+#   agent_questions: |
+#     Full question batch, verbatim.
+#   user_answer: |
+#     Full user answer, verbatim.
+
+general_understanding:
+  feature_name:
+    score: 100
+    value: "UI Mockup Preview & Approval Step"
+    gaps: []
+    required: true
+
+  feature_description:
+    score: 95
+    value: |
+      Add a new Step 7 to the user-spec-planning skill (applies to every project using this
+      methodology): after a user-spec is approved (Step 6) and before implementation
+      (layout-writing/code-writing) starts, generate one or two high-fidelity static HTML/CSS
+      mockups (one per targeted platform — web and/or mobile, only the ones the feature actually
+      targets), each covering all the feature's screens/flows in a single file with a
+      responsive/mobile-appropriate layout. The user reviews and explicitly approves/rejects it
+      before coding begins, with no limit on reject/revise iterations. Once approved, the mockup
+      becomes the authoritative visual source for implementation: layout-writing treats it like its
+      existing "Claude Design export" source branch and uses its existing diff mechanism
+      (capture.mjs/overlay.mjs/layout-reviewer) to verify the implementation matches it.
+
+      In local/interactive mode, approval happens in chat (new Step 7, after Step 6). In
+      online-pipeline (headless GitHub Actions), there is no way to render HTML for a human, so
+      instead: capture.mjs (Playwright) screenshots each mockup to PNG, and the screenshot(s) are
+      attached to the same existing spec PR (userspec/{slug}) used for spec-text approval — a
+      single /approve comment approves both spec text and mockup together, avoiding any change to
+      the external control-plane repo's Worker logic (which only recognizes the existing two PR
+      types). This requires adding a Playwright install step to the userspec-turn CI workflow.
+    gaps: []
+    required: true
+
+  work_type:
+    score: 100
+    value: "feature"
+    gaps: []
+    required: true
+
+  user_problem:
+    score: 85
+    value: |
+      For UI projects (web, mobile), there is currently no way to visualize/preview the UI to
+      approve before implementation — only a text UI/UX spec exists. The user cannot judge whether
+      the planned UI is right before code is written, so mismatches are only caught after
+      implementation.
+    gaps: []
+    required: true
+
+  target_users:
+    score: 60
+    value: "The user themself (and anyone applying this methodology across their projects) acting as spec approver before implementation."
+    gaps: []
+    required: false
+
+  success_criteria:
+    score: 90
+    value: |
+      For any feature with real UI (has ui_ux_requirements), after spec approval a mockup.html
+      (per targeted platform) exists under work/{feature}/, covering all screens/flows, and no
+      implementation starts until the user approves it — in chat (local) or via /approve on the
+      spec PR with the screenshot attached (online-pipeline). Reject/revise loop is unlimited.
+      After implementation, layout-writing's existing diff mechanism (capture.mjs/overlay.mjs)
+      confirms the built UI matches the approved mockup. The mockup file is kept after
+      implementation as a reference, not deleted. Backend-only features skip this step entirely.
+    gaps: []
+    required: true
+
+  constraints:
+    score: 95
+    value: |
+      - No tool writes directly into Figma; mockup is a static HTML/CSS artifact, not a .fig file.
+      - online-pipeline's Worker-side /approve detection lives in the external control-plane repo
+        (out of this session's reach) and only recognizes the existing userspec/{slug} and
+        feature/{slug} PR types — a third PR type for mockup approval is not an option, so the
+        mockup must ride on the existing spec PR instead.
+      - capture.mjs depends on Playwright, resolved via a package.json at the project root it's
+        pointed at. Since this methodology is stack-agnostic (target projects may be
+        Python/Ruby/PHP/Go with no package.json at all), the online-pipeline userspec-turn workflow
+        installs Playwright into its own dedicated tooling directory inside the CI checkout
+        (independent of the target project's stack/package.json) and points capture.mjs at that
+        directory when screenshotting — not at the target project's root.
+      - gh CLI has no direct image-upload-into-comment primitive. The screenshot PNG is committed to
+        the same spec branch as mockup.html, and the PR/issue comment references it via a
+        `.../blob/{branch}/{path}?raw=true` link, which GitHub renders inline for an authenticated
+        viewer. The PNG is kept on the branch alongside mockup.html (not deleted after approval).
+    gaps: []
+    required: true
+
+  testing_strategy:
+    score: 90
+    value: |
+      No automated test suite applies (this is a skill-instructions/methodology change, not
+      application code). Verification = (1) manual dry-run of the new Step 7 on a sample feature
+      with real UI in local/interactive mode — confirm mockup.html(s) generate correctly, the
+      approval gate blocks implementation until approved, and layout-writing's diff mechanism
+      picks up the approved mockup as its visual source; (2) review the new/changed skill
+      instructions (user-spec-planning, layout-writing, online-pipeline, methodology SKILL.md) with
+      the skill-checker and skill-logic-reviewer agents. The online-pipeline CI path (Playwright
+      install in its own tooling directory, capture.mjs running inside GitHub Actions, PNG commit +
+      blob?raw=true comment link, combined spec+mockup /approve) cannot be emulated in this
+      planning session — explicitly accepted as a known limitation, to be verified live on the
+      first real UI feature that goes through online-pipeline after this ships, with close
+      monitoring of that first run.
+    gaps: []
+    required: true
+
+user_experience:
+  user_stories:
+    score: 85
+    value: |
+      Local/interactive: (1) user-spec-planning Step 6 approves the spec text as today; (2) new
+      Step 7 generates mockup.html (web and/or mobile, per targeted platform) from the approved
+      spec; (3) agent presents the mockup artifact to the user in chat; (4) user approves, or
+      requests changes — step 7 regenerates and re-presents, unlimited iterations; (5) once
+      approved, the spec hand-off to implementation includes the mockup path(s); (6)
+      layout-writing/code-writing implements using the mockup as the visual source; (7)
+      layout-writing's existing capture.mjs/overlay.mjs diff verifies the built UI against the
+      mockup.
+
+      online-pipeline: (1) userspec-turn runs Steps 1–5 as today; (2) before writing
+      status: ready_for_review, it also runs the new mockup-generation step and screenshots each
+      mockup via capture.mjs (Playwright); (3) screenshots are attached to the same spec PR
+      (userspec/{slug}) the workflow YAML opens; (4) a single /approve comment on that PR approves
+      both the spec text and the mockup; (5) requested changes route back through the normal
+      Resume path, regenerating the mockup along with the spec.
+    gaps: []
+    required: true
+
+  acceptance_criteria:
+    score: 80
+    value: |
+      - For a feature with real UI, work/{feature}/ contains mockup-web.html and/or
+        mockup-mobile.html (only the platforms the feature targets) after Step 7, each covering
+        every screen/flow named in the user-spec.
+      - Implementation (layout-writing/code-writing) cannot begin until the mockup is approved
+        (chat confirmation locally, PR /approve comment in online-pipeline).
+      - For online-pipeline, the spec PR carries an attached screenshot of each mockup before
+        ready_for_review is set, and no second PR/branch is created for the mockup.
+      - layout-writing's diff mechanism (capture.mjs/overlay.mjs) runs against the approved mockup
+        as the visual source once implementation exists.
+      - Backend-only features (no ui_ux_requirements) skip Step 7 entirely — no mockup file is
+        created and nothing blocks implementation.
+    gaps: []
+    required: true
+
+  edge_cases:
+    score: 75
+    value: |
+      - Feature has no real UI (backend-only): Step 7 is skipped entirely, no mockup file created.
+      - Feature targets only one platform: only that platform's mockup file is generated (not both).
+      - Project has no existing design system/style tokens: mockup follows layout-writing's
+        existing "Evidence Order" (project docs → same component elsewhere → neighboring
+        components → project tokens → general conventions) rather than inventing a new style.
+      - Mockup rejected repeatedly: no hard limit: Step 7 just keeps regenerating until approved.
+    gaps: []
+    required: true
+
+  error_scenarios:
+    score: 65
+    value: |
+      - capture.mjs/Playwright screenshot fails in online-pipeline CI (e.g. render timeout): treated
+        like any other CI step failure in that workflow — the job fails and surfaces the error via
+        the existing issue-comment error-reporting path, not a new silent fallback.
+      - User approves spec text but wants to reject only the mockup in online-pipeline: not
+        possible by design (single combined /approve) — user must comment a change request instead,
+        which re-runs Step 7 along with normal spec Resume handling. This is an accepted limitation,
+        not a bug.
+    gaps: []
+    required: true
+
+  verification_strategy:
+    score: 80
+    value: |
+      Manual dry-run of Step 7 on a sample UI feature in local/interactive mode (mockup generation,
+      approval gate, layout-writing consuming the approved mockup via its existing diff mechanism),
+      plus skill-checker and skill-logic-reviewer agent review of every changed/new SKILL.md
+      (user-spec-planning, layout-writing, online-pipeline, methodology).
+    gaps: []
+    required: true
+
+  ui_ux_requirements:
+    score: 90
+    value: |
+      Mockup is high-fidelity static HTML/CSS (not a wireframe, not a clickable prototype), one
+      file per targeted platform (web and/or mobile — only the ones the feature targets, never both
+      by default), each file covering all of that feature's screens/flows. No real Figma file is
+      produced. Once approved it becomes the authoritative visual source consumed by
+      layout-writing exactly like its existing "Claude Design export" branch.
+    gaps: []
+    required: false
+
+  risks:
+    score: 85
+    value: |
+      - Mockup drifts from the approved spec text if the reviewer only reads one of the two.
+        Mitigation: mockup generation must derive strictly from the already-approved user-spec
+        content, not introduce new scope.
+      - Added time/CI cost on every UI feature. Mitigation: Step 7 (and CI's Playwright step) only
+        runs when the feature actually has UI (ui_ux_requirements is non-empty); backend-only
+        features are unaffected.
+      - online-pipeline's combined spec+mockup approval means a reviewer cannot approve the spec
+        text while rejecting only the mockup (or vice versa) — accepted limitation, no mitigation
+        needed per user decision.
+    gaps: []
+    required: true
+
+  technical_decisions:
+    score: 80
+    value: |
+      - Static HTML/CSS mockup chosen over a real Figma file because no tool in this environment
+        can write to Figma.
+      - online-pipeline screenshots the mockup via the existing capture.mjs (Playwright) rather than
+        building new rendering infra, and attaches the image to the existing spec PR rather than
+        opening a third PR/branch, to avoid any change to the external control-plane repo.
+      - layout-writing reuses its existing "Claude Design export" source-handling branch for the
+        mockup rather than inventing a fourth source type.
+    gaps: []
+    required: false
+
+  deploy_approach:
+    score: 100
+    value: "N/A — this is a methodology/skill change, not a deployed service."
+    gaps: []
+    required: false
+
+  manual_user_actions:
+    score: 75
+    value: |
+      Local: open/view the generated mockup.html (e.g. in a browser) and reply in chat with
+      approve or a change request. online-pipeline: open the spec PR, view the attached mockup
+      screenshot(s) in the PR/issue comment, and comment /approve (or a change request) same as
+      today's spec approval.
+    gaps: []
+    required: false
+
+integration:
+  integration_points:
+    score: 90
+    value: |
+      - skills/user-spec-planning/SKILL.md — new Step 7 after today's Step 6, gated on
+        ui_ux_requirements being non-empty; assets/ may need a mockup file convention (no template
+        exists today, generated ad hoc).
+      - skills/layout-writing/SKILL.md + references/reproduce.md — add handling for the approved
+        mockup as a visual source, reusing the "Claude Design export" branch's treatment
+        (render/diff via capture.mjs/overlay.mjs, reviewed by layout-reviewer).
+      - skills/online-pipeline/SKILL.md — userspec-turn stage: after Step 5 validation and before
+        writing status: ready_for_review, generate mockup(s), screenshot via capture.mjs (pointed
+        at the workflow's own tooling directory, not the target project root), commit the PNG(s)
+        to the spec branch, and post a comment on the existing userspec/{slug} spec PR with
+        `.../blob/{branch}/{path}?raw=true` links; no new PR/branch/stage name.
+      - .github workflow YAML for userspec-turn — add a step that installs Playwright into a
+        dedicated tooling directory inside the CI checkout (decoupled from the target project's own
+        package.json/stack).
+      - skills/methodology/SKILL.md — update the lifecycle diagram, the "Plan the Feature" numbered
+        steps, the work/{feature}/ tree diagram (add mockup file entries), and the Skill
+        Responsibilities table.
+    gaps: []
+    required: true
+
+  dependencies:
+    score: 90
+    value: |
+      - layout-writing's scripts/capture.mjs and scripts/overlay.mjs (Playwright-based) — reused
+        as-is for screenshotting and diffing, not rewritten, but capture.mjs is pointed at a
+        dedicated CI tooling directory (not the target project root) when run from online-pipeline.
+      - Playwright must be installed in that dedicated tooling directory by the online-pipeline
+        userspec-turn CI workflow (not currently installed anywhere in online-pipeline), decoupled
+        from the target project's own stack/package.json.
+      - scripts/init-feature-folder.sh is unaffected (mockup files are generated by Step 7 itself,
+        not pre-created at folder-init time).
+    gaps: []
+    required: false
+
+  technical_constraints:
+    score: 90
+    value: |
+      online-pipeline CI (GitHub Actions) must install Playwright + browser binaries to run
+      capture.mjs; this adds CI time to the userspec-turn job, accepted by the user.
+    gaps: []
+    required: false
+
+  data_requirements:
+    score: 100
+    value: "N/A — no new data storage beyond the mockup HTML file(s) already covered under integration_points."
+    gaps: []
+    required: false
+
+  migration_needs:
+    score: 100
+    value: "N/A — new optional step gated on ui_ux_requirements; no existing feature folders need migration."
+    gaps: []
+    required: false
+
+notes: ""
