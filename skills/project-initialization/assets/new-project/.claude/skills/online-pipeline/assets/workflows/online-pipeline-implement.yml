@@ -503,6 +503,8 @@ jobs:
           # this loop mirrors every new bot comment deterministically instead.
           BEFORE_COMMENT_COUNT="$(gh issue view "$ISSUE_NUMBER" --json comments --jq '.comments | length')"
           RATE_LIMIT_RESUME_COUNT=0
+          KILLED_RESUME_COUNT=0
+          KILLED_RESUME_MAX=2
 
           for ATTEMPT in 1 2 3; do
             echo "Implement attempt $ATTEMPT/$ATTEMPTS (stage: $STAGE_NAME)"
@@ -548,6 +550,7 @@ jobs:
               # harmless no-op/401 instead of a real duplicate Slack post.
               CLAUDE_CODE_OAUTH_TOKEN="$CURRENT_TOKEN" SLACK_RELAY_TOKEN="" SLACK_WORKER_URL="" \
                 claude "${CLAUDE_FLAGS[@]}" "$CLAUDE_PROMPT_TEXT" --dangerously-skip-permissions 2>&1 | tee "$CLAUDE_OUTPUT_FILE"
+              CLAUDE_EXIT_CODE=$?
               set -e
 
               AFTER_COMMENT_COUNT="$(gh issue view "$ISSUE_NUMBER" --json comments --jq '.comments | length')"
@@ -575,6 +578,25 @@ jobs:
               fi
 
               echo "Technical failure (status: $STATUS)."
+
+              # The claude process itself was killed by a signal (e.g. an out-of-memory kill on the
+              # runner) rather than exiting on its own — $STATUS alone can't tell this apart from a
+              # normal technical failure, since the agent never got to update the status file either
+              # way. Exit codes >=128 mean "killed by signal N" (128+N) in bash. Treat this like a
+              # rate-limit resume — continue the same session with -c instead of discarding the work
+              # — since a signal kill says nothing about whether the work so far is bad; only a
+              # genuine application-level failure should reset. Capped separately from the rate-limit
+              # resume loop (no pool-exhausted signal exists for this case) so a runner that keeps
+              # getting killed still falls back to reset-and-retry instead of looping forever.
+              if [ "$CLAUDE_EXIT_CODE" -ge 128 ] && [ "$KILLED_RESUME_COUNT" -lt "$KILLED_RESUME_MAX" ]; then
+                rm -f .git/index.lock
+                KILLED_RESUME_COUNT=$((KILLED_RESUME_COUNT + 1))
+                echo "Process was killed unexpectedly (exit $CLAUDE_EXIT_CODE) — resume #$KILLED_RESUME_COUNT, continuing previous session without reset"
+                CLAUDE_FLAGS=(-p -c)
+                CLAUDE_PROMPT_TEXT="Your previous Claude Code process was killed unexpectedly (not a normal error, likely an out-of-memory kill) while working on this task. Continue exactly where you left off — do not restart from the beginning. First run 'git status' and check the file you were last editing for any incomplete or corrupted changes before continuing."
+                continue
+              fi
+
               if try_rate_limit_switch; then
                 RATE_LIMIT_RESUME_COUNT=$((RATE_LIMIT_RESUME_COUNT + 1))
                 echo "Rate-limit resume #$RATE_LIMIT_RESUME_COUNT — continuing previous session with new token"
