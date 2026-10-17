@@ -18,7 +18,7 @@ permissions:
 jobs:
   route:
     if: github.event_name == 'issues' || github.event.comment.user.type != 'Bot'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       action: ${{ steps.route.outputs.action }}
       slug: ${{ steps.route.outputs.slug }}
@@ -128,7 +128,7 @@ jobs:
   approve:
     needs: route
     if: needs.route.outputs.action == 'approve'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     # Keyed by slug (not issue number): a PR comment's github.event.issue.number is the PR's own
     # number, different from the originating issue's — keying by issue number would let an
     # approve run and a same-feature "continue" run (triggered by a comment on the issue itself)
@@ -178,7 +178,7 @@ jobs:
   userspec:
     needs: route
     if: needs.route.outputs.action == 'start' || needs.route.outputs.action == 'continue'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     concurrency:
       group: online-pipeline-userspec-${{ needs.route.outputs.slug }}
       cancel-in-progress: false

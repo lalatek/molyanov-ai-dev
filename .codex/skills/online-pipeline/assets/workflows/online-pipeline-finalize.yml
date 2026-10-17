@@ -31,7 +31,7 @@ permissions:
 jobs:
   set-label:
     if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'userspec-implement')
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # No actions/checkout in this job (pure label bookkeeping, no file access needed) — gh
@@ -93,7 +93,7 @@ jobs:
 
   finalize:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     concurrency:
       # Fixed, shared across every feature (and with knowledge-init) so two runs that both commit
       # straight to main never race on Project Knowledge. Deliberately NOT slug-scoped — this job
@@ -162,7 +162,7 @@ jobs:
         # whenever it updates Project Knowledge under .claude/** (the normal finalize path, not an
         # edge case) — that script only exists on a developer's own machine, never on a bare CI
         # runner, so it must be fetched here the same way the Claude CLI itself is installed fresh
-        # each run. Only python3 is required (preinstalled on ubuntu-latest); no other dependency.
+        # each run. Only python3 is required — must be present on the self-hosted runner image; no other dependency.
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.claude/scripts"
