@@ -12,7 +12,7 @@
 #
 # Usage: ./vendor-skills.sh [source-dir]
 #   source-dir  — optional path to a local molyanov-ai-dev checkout. If omitted, clones
-#                 https://github.com/thanhpd56/molyanov-ai-dev.git fresh (public repo, no auth).
+#                 https://github.com/lalatek/molyanov-ai-dev.git fresh (public repo, no auth).
 #
 # Run from the target project root. Safe to re-run anytime to pick up upstream updates — this is
 # also the proactive-update mechanism: re-run it whenever you want the latest version. Nothing is
@@ -56,8 +56,8 @@ trap cleanup EXIT
 if [[ -z "$SOURCE_DIR" ]]; then
   CLEANUP_DIR="$(mktemp -d)"
   SOURCE_DIR="$CLEANUP_DIR"
-  echo "Cloning https://github.com/thanhpd56/molyanov-ai-dev.git (public repo, no auth needed)..."
-  git clone --depth 1 --quiet https://github.com/thanhpd56/molyanov-ai-dev.git "$SOURCE_DIR"
+  echo "Cloning https://github.com/lalatek/molyanov-ai-dev.git (public repo, no auth needed)..."
+  git clone --depth 1 --quiet https://github.com/lalatek/molyanov-ai-dev.git "$SOURCE_DIR"
 fi
 
 if [[ ! -d "$SOURCE_DIR/skills" || ! -d "$SOURCE_DIR/agents" ]]; then

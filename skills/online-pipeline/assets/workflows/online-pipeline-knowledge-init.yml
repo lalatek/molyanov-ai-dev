@@ -69,9 +69,9 @@ jobs:
           set -euo pipefail
           mkdir -p "$HOME/.claude/scripts"
           curl -fsSL -o "$HOME/.claude/scripts/sync-to-codex.py" \
-            https://raw.githubusercontent.com/thanhpd56/molyanov-ai-dev/main/scripts/sync-to-codex.py
+            https://raw.githubusercontent.com/lalatek/molyanov-ai-dev/main/scripts/sync-to-codex.py
           curl -fsSL -o "$HOME/.claude/scripts/sync-to-codex.sh" \
-            https://raw.githubusercontent.com/thanhpd56/molyanov-ai-dev/main/scripts/sync-to-codex.sh
+            https://raw.githubusercontent.com/lalatek/molyanov-ai-dev/main/scripts/sync-to-codex.sh
           chmod +x "$HOME/.claude/scripts/sync-to-codex.sh"
 
       - name: Run knowledge-init turn with retry

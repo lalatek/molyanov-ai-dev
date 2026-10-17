@@ -117,7 +117,7 @@ repo's `.claude/skills/` and `.claude/agents/`. Every stage prompt in this file 
 skill it needs by its *vendored* path, `.claude/skills/{name}/SKILL.md` — not this source repo's
 own bare `skills/{name}/SKILL.md` layout, which only resolves inside this specific repo.
 
-`scripts/vendor-skills.sh` does this by cloning `https://github.com/thanhpd56/molyanov-ai-dev`
+`scripts/vendor-skills.sh` does this by cloning `https://github.com/lalatek/molyanov-ai-dev`
 (public, no auth) and copying the exact closure listed above, plus refreshing the three
 `.github/workflows/online-pipeline-*.yml` files themselves — it is the single update path for both
 the automation logic and the skills/agents driving it. Re-run it anytime to pick up upstream
